@@ -1,40 +1,77 @@
 const mongoose = require('mongoose')
 const validator = require('validator')
-
-
-// Creates a Mongoose moodel for document 'User'
-const User = mongoose.model('User', {
-    name: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    age: {
-        type: Number,
-        default: 0
-    },
-    email: {
-        type: String,
-        required: true,
-        lowercase: true,
-        trim: true,
-        validate(value) {
-            if(!validator.isEmail(value)) {
-                throw new Error('Invalid email address')
+const bcrypt = require('bcryptjs')
+// Creating user schema for model 'User'
+const userSchema = new mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        age: {
+            type: Number,
+            default: 0
+        },
+        email: {
+            type: String,
+            required: true,
+            lowercase: true,
+            trim: true,
+            unique: true,
+            validate(value) {
+                if (!validator.isEmail(value)) {
+                    throw new Error('Invalid email address')
+                }
+            }
+        },
+        password: {
+            type: String,
+            required: true,
+            minlength: 7,
+            trim: true,
+            validate(value) {
+                if (validator.contains(value, 'password'))
+                    throw new Error('Password should not contain "Password"')
             }
         }
-    },
-    password: {
-        type: String,
-        required: true,
-        minlength: 7,
-        trim: true,
-        validate(value) {
-            if(validator.contains(value, 'password'))
-                throw new Error('Password should not contain "Password"')
-        }
+    }
+)
+
+// Custom function to find user by credentials and verifying the user
+userSchema.statics.findByCredentials = async (email, password) => {
+    // Finding user by the email
+    const user = await User.findOne({ email })
+    console.log(user);
+
+    // If no user is found, thrwoing an error
+    if (!user) {
+        throw new Error('Bad credentials')
+    }
+
+    // Comparing the entered password with the one in database
+    const isMatch = await bcrypt.compare(password, user.password)
+
+    // If passwords do not match, throwing an error
+    if (!isMatch) {
+        throw new Error('Bad credentials')
+    }
+
+    return user
+}
+
+// This runs before the save() is executed
+// Hashing the password before saving it to the database
+userSchema.pre('save', async function () {
+    // Getting user object
+    const user = this
+
+    if (user.isModified('password')) {
+        user.password = await bcrypt.hash(user.password, 8)
     }
 })
+// Creates a Mongoose moodel for document 'User'
+const User = mongoose.model('User', userSchema)
 
 // Exporting User model to our app
 module.exports = User
