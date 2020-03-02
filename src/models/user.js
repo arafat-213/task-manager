@@ -1,6 +1,8 @@
 const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+
 // Creating user schema for model 'User'
 const userSchema = new mongoose.Schema(
     {
@@ -34,7 +36,13 @@ const userSchema = new mongoose.Schema(
                 if (validator.contains(value, 'password'))
                     throw new Error('Password should not contain "Password"')
             }
-        }
+        },
+        tokens: [{
+            token: {
+                type: String,
+                required: true
+            }
+        }]
     }
 )
 
@@ -58,6 +66,24 @@ userSchema.statics.findByCredentials = async (email, password) => {
     }
 
     return user
+}
+
+// Method on userSchema to generate authentication token
+// Not making it a static method as it is applied to individual users and not on entire schema
+userSchema.methods.generateAuthToken = async function() {
+    // Getting user reference
+    const user = this
+
+    // Generating a token for user
+    const token = jwt.sign( { _id: user._id.toString() } , 'thisismysecretkey')
+
+    // Adding token to tokens array on user object
+    user.tokens = user.tokens.concat({token})
+
+    // saving the user with the token
+    await user.save()
+
+    return token
 }
 
 // This runs before the save() is executed

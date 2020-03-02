@@ -16,7 +16,17 @@ router.post('/users', async (req, res) => {
         // Treats save() like a synchronous function
         // Execution will be halted till save() is finished
         // Hence next statement send() will be executed only when save() is completed
+
+        // Generating an auth token for new user
+        const token = await newUser.generateAuthToken()
+
+        // Storing the token in to new user object
+        newUser.tokens = newUser.tokens.concat({token})
+
+        // Storing the user data into database
         await newUser.save()
+
+        // Setting the status 201 and sending the user back as response
         res.status(201).send(newUser)
     } catch (error) {
         // Exception in save() => send back a 400
@@ -146,8 +156,12 @@ router.post('/users/login', async (req, res) => {
         
         // Finding a user with these credentials
         const user = await User.findByCredentials(email, password)
+
+        // Generating a token
+        const token = await user.generateAuthToken()
+
         // Sending user as a response
-        res.send(user)
+        res.send({user, token})
     } catch (error) {
         console.log(error);
         
