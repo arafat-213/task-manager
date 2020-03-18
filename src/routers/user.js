@@ -1,5 +1,6 @@
 const express = require('express')
 const User = require('../models/user')
+const auth = require('../middleware/auth')
 
 // Getting a router from Express library
 const router = new express.Router()
@@ -34,29 +35,21 @@ router.post('/users', async (req, res) => {
     }
 })
 
-/***************** LIST *************************/
+/***************** READ PROFILE *************************/
 
-// End point for fetching users
-router.get('/users', async (req, res) => {
-    try {
-        // When query criteria is {}, it returns all the documents in our collection
-        const users = await User.find({})
-        if (!users) {
-            // If users is undefined => No user is found
-            return res.status(404).send()
-        }
-        // When find() is completed and users != undefined sends a response
-        res.send(users)
-    } catch (error) {
-        // Exception in find()
-        res.status(404).send()
-    }
+// End point for fetching user profile
+// Users auth express middleware
+router.get('/users/me', auth, async (req, res) => {
+    // This function is called only after auth middleware is executed
+    // User is authenticated and user object is stored in req.user by auth middleware
+    // Sending the user object fetched bu auth middleware as response
+    res.send(req.user)    
 })
 
 /***************** READ *************************/
 
 // End point for fetching a specific user
-router.get('/users/:id', async (req, res) => {
+router.get('/users/:id', auth, async (req, res) => {
     // Getting id from request query params
     const _id = req.params.id
 
@@ -169,5 +162,38 @@ router.post('/users/login', async (req, res) => {
     }
 })
 
+/**************************** LOG OUT ************************************/
+// Logs out user from current session/device only
+// If user is logged in multiple devices, other sesions remain active
+router.post('/users/logout', auth, async (req, res) => {
+    // auth middleware ensures user is logged in before logging out
+    try {
+        // Removing the current auth token from user object in db
+        req.user.tokens = req.user.tokens.filter((token) => token.token != req.token)
+
+        // Saving the user data in db with token removed
+        await req.user.save()
+
+        res.send('Logged out')
+    } catch (error) {
+        res.status(500).send()        
+    }
+})
+
+/************************  LOG OUT ALL  ******************************************/
+// Logs out the user across all sessions/devices
+router.post('/users/logoutAll', auth, async (req, res)=> {
+    try {
+        // Emptying the tokens array to remove all the tokens
+    req.user.tokens = []
+
+    // storing the user with removed tokens in db
+    await req.user.save()
+
+    res.send('Logged out across all devices')
+    } catch (error) {
+        res.status(500).send()
+    }
+})
 // Exporting the user router
 module.exports = router
