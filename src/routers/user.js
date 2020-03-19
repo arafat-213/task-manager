@@ -28,7 +28,7 @@ router.post('/users', async (req, res) => {
         await newUser.save()
 
         // Setting the status 201 and sending the user back as response
-        res.status(201).send(newUser)
+        res.status(201).send({newUser, token})
     } catch (error) {
         // Exception in save() => send back a 400
         res.status(400).send(error)
@@ -70,7 +70,7 @@ router.get('/users/:id', auth, async (req, res) => {
 /***************** UPDATE *************************/
 
 // End point for updating user
-router.patch('/users/:id', async (req, res) => {
+router.patch('/users/me', auth, async (req, res) => {
     // Fields from requests to be updated
     const fieldsToBeUpdated = Object.keys(req.body)
     // Fileds allowed to be updated
@@ -84,34 +84,16 @@ router.patch('/users/:id', async (req, res) => {
     }
 
     try {
-        // Reading ID from request params
-        const _id = req.params.id
-
         // Updates to be applied
         const updatesToBeApplied = req.body
 
-        // Options:
-        // new: true => makes sure findByIdAndUpdate returns update user document
-        // runValidator: true => Runs mongooose validation on updates
-
-        // Not using findByIdAndUpdate as it bypasses mongoose middleware methods ie pre() || post()
-        // const user = await User.findByIdAndUpdate(_id, updates, { new: true, runValidators: true })
-
-        // Getting user by id
-        const user = await User.findById(_id)
-
-        // Applying the updates to the user object
-        fieldsToBeUpdated.forEach((field) => user[field] = updatesToBeApplied[field])
+        // Applying the upd ates to the user object
+        fieldsToBeUpdated.forEach((field) => req.user[field] = updatesToBeApplied[field])
 
         // saving updated user details
-        await user.save()
-
-        if (!user) {
-            // If no user is found for the given ID
-            return res.status(404).send()
-        }
+        await req.user.save()
         // Sending back a user if found and updated
-        res.send(user)
+        res.send(req.user)
     } catch (error) {
         res.status(400).send(error)
     }
@@ -120,20 +102,14 @@ router.patch('/users/:id', async (req, res) => {
 /***************** DELETE *************************/
 
 // End point for deleting a user
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/me', auth, async (req, res) => {
     try {
-        // getting the id from request params
-        const _id = req.params.id
+        // req.user is fetched by auth middleware
+        // Removing the user from database
+        await req.user.remove()
 
-        // Finding the task by ID and deleting it
-        const user = await User.findByIdAndDelete(_id)
-
-        // If no task is found for the given ID, returns a 404
-        if (!user)
-            return res.status(404).send()
-
-        // Returns the task if found and deleted
-        res.send(user)
+        // Sending the deleted user as response
+        res.send(req.user)
     } catch (error) {
         // Exception in findByIdAndDelete() 
         res.status(500).send()
@@ -154,7 +130,7 @@ router.post('/users/login', async (req, res) => {
         const token = await user.generateAuthToken()
 
         // Sending user as a response
-        res.send({user, token})
+        res.send({ user, token })
     } catch (error) {
         console.log(error);
         
@@ -162,7 +138,7 @@ router.post('/users/login', async (req, res) => {
     }
 })
 
-/**************************** LOG OUT ************************************/
+/**************************** LOG OUT ***********************************/
 // Logs out user from current session/device only
 // If user is logged in multiple devices, other sesions remain active
 router.post('/users/logout', auth, async (req, res) => {
@@ -180,7 +156,7 @@ router.post('/users/logout', auth, async (req, res) => {
     }
 })
 
-/************************  LOG OUT ALL  ******************************************/
+/************************  LOG OUT ALL  *********************************/
 // Logs out the user across all sessions/devices
 router.post('/users/logoutAll', auth, async (req, res)=> {
     try {

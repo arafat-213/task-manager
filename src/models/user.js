@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const Task = require('./task')
 
 // Creating user schema for model 'User'
 const userSchema = new mongoose.Schema(
@@ -46,6 +47,13 @@ const userSchema = new mongoose.Schema(
     }
 )
 
+// Adds a virtual property for tasks created by this user on user object when populate() is called
+userSchema.virtual('tasks', {
+    ref: 'Task',
+    localField: '_id',
+    foreignField: 'owner'
+})
+
 // Custom function to find user by credentials and verifying the user
 userSchema.statics.findByCredentials = async (email, password) => {
     // Finding user by the email
@@ -86,6 +94,29 @@ userSchema.methods.generateAuthToken = async function() {
     return token
 }
 
+// Method on userSchema to return public profile containing non sensitive data of user
+// toJSON is called by mongoose every time we return a mongoose object
+// Hiding sensitive data here will prevent it from showing up every time 'user' object is returned
+userSchema.methods.toJSON = function () {
+    // Getting user reference
+    const user = this
+
+    // Getting a copy of user mongoose data
+    const userObject = user.toObject() 
+
+    // delete operator to delete sensitive data from user profile
+    // deleting tokens
+    delete userObject.tokens
+
+    // deleting password
+    delete userObject.password
+
+    console.log(userObject);
+    
+    // Returning the filtered user object
+    return userObject
+}
+
 // This runs before the save() is executed
 // Hashing the password before saving it to the database
 userSchema.pre('save', async function () {
@@ -96,6 +127,17 @@ userSchema.pre('save', async function () {
         user.password = await bcrypt.hash(user.password, 8)
     }
 })
+
+// Delete user tasks when user is removed
+userSchema.pre('remove', async function() {
+    // Getting the user object ref
+    const user = this
+
+    // Removing tasks
+    Task.deleteMany({owner: user._id})
+})
+
+
 // Creates a Mongoose moodel for document 'User'
 const User = mongoose.model('User', userSchema)
 
