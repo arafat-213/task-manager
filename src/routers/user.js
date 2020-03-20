@@ -1,4 +1,6 @@
 const express = require('express')
+const multer = require('multer')
+const sharp = require('sharp')
 const User = require('../models/user')
 const auth = require('../middleware/auth')
 
@@ -22,13 +24,13 @@ router.post('/users', async (req, res) => {
         const token = await newUser.generateAuthToken()
 
         // Storing the token in to new user object
-        newUser.tokens = newUser.tokens.concat({token})
+        newUser.tokens = newUser.tokens.concat({ token })
 
         // Storing the user data into database
         await newUser.save()
 
         // Setting the status 201 and sending the user back as response
-        res.status(201).send({newUser, token})
+        res.status(201).send({ newUser, token })
     } catch (error) {
         // Exception in save() => send back a 400
         res.status(400).send(error)
@@ -43,7 +45,7 @@ router.get('/users/me', auth, async (req, res) => {
     // This function is called only after auth middleware is executed
     // User is authenticated and user object is stored in req.user by auth middleware
     // Sending the user object fetched bu auth middleware as response
-    res.send(req.user)    
+    res.send(req.user)
 })
 
 /***************** READ *************************/
@@ -122,7 +124,7 @@ router.post('/users/login', async (req, res) => {
         // Getting user email and password
         const email = req.body.email
         const password = req.body.password
-        
+
         // Finding a user with these credentials
         const user = await User.findByCredentials(email, password)
 
@@ -133,8 +135,83 @@ router.post('/users/login', async (req, res) => {
         res.send({ user, token })
     } catch (error) {
         console.log(error);
-        
+
         res.status(400).send()
+    }
+})
+
+
+/******************** UPLOAD PROFILE PICTURE *****************************/
+
+// Multer is used to handle form-data such as image files for users' profile pictures.
+// Setting up multer instance
+const upload = multer({
+    limits: {
+        // fileSize in bytes, this won't let users upload file larger than 1 Megabytes
+        fileSize: 1024000
+    },
+    // Allows files with certain extensions only
+    fileFilter(req, file, callback) {
+        // Reg-ex that ensures only image files are accepted.
+        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+            return callback(new Error('Please upload an image file'))
+        }
+
+        // If the file is valid, accepting it.
+        /** callback
+         * @params
+         * error => undefined if file is acceptable
+         * result : Boolean => true if file is to be accepted, false otherwise
+         */
+        callback(undefined, true)
+    }
+})
+
+router.post('/users/me/avatar', auth, upload.single('avatar'), async (req, res) => {
+    // Converting the file into png using sharp and resizing it to 250 x 250
+    const buffer = await sharp(req.file.buffer).resize({width: 250, height: 250}).png().toBuffer()
+    
+    // Saving the binary file on user mongoose model
+    req.user.avatar = buffer
+
+    // Saving the user in db
+    await req.user.save()
+
+
+    res.send()
+}, (error, req, res, next) => {
+    res.status(400).send({ error: error.message })
+})
+
+/********************* VIEW PROFILE PICTURE *****************************/
+router.get('/users/:id/avatar', async(req, res) => {
+    try {
+        // Getting the user by ID
+        const user = await User.findById(req.params.id)
+        
+        // If user does not exists or User does not have a profile picture, throws an error
+        if (!user || !user.avatar) {
+            throw new Error()
+        }
+
+        // Setting the content type = image to serve image files in response header
+        res.set('Content-Type', 'image/png')
+
+        // Sending back the avatar as response
+        res.send(user.avatar)
+    } catch (error) {
+        res.status(404).send()
+    }
+})
+
+/********************* REMOVE PROFILE PICTURE ***************************/
+router.delete('/users/me/avatar', auth, async (req, res) => {
+    try {
+        req.user.avatar = undefined
+        await req.user.save()
+        res.send()
+    } catch (error) {
+        res.status(500).send({error})
     }
 })
 
@@ -152,21 +229,21 @@ router.post('/users/logout', auth, async (req, res) => {
 
         res.send('Logged out')
     } catch (error) {
-        res.status(500).send()        
+        res.status(500).send()
     }
 })
 
 /************************  LOG OUT ALL  *********************************/
 // Logs out the user across all sessions/devices
-router.post('/users/logoutAll', auth, async (req, res)=> {
+router.post('/users/logoutAll', auth, async (req, res) => {
     try {
         // Emptying the tokens array to remove all the tokens
-    req.user.tokens = []
+        req.user.tokens = []
 
-    // storing the user with removed tokens in db
-    await req.user.save()
+        // storing the user with removed tokens in db
+        await req.user.save()
 
-    res.send('Logged out across all devices')
+        res.send('Logged out across all devices')
     } catch (error) {
         res.status(500).send()
     }
