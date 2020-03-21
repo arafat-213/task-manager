@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const Task = require('./task')
 
-// Creating user schema for model 'User'
+// Creating user schema for model 'User' 
 const userSchema = new mongoose.Schema(
     {
         name: {
