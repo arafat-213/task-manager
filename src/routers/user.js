@@ -3,6 +3,7 @@ const multer = require('multer')
 const sharp = require('sharp')
 const User = require('../models/user')
 const auth = require('../middleware/auth')
+const { sendWelcomeEmail, sendFarewellMail } = require('../emails/account')
 
 // Getting a router from Express library
 const router = new express.Router()
@@ -29,11 +30,16 @@ router.post('/users', async (req, res) => {
         // Storing the user data into database
         await newUser.save()
 
+        // sneding a welcome email to new user
+        sendWelcomeEmail(newUser.email, newUser.name)
+
         // Setting the status 201 and sending the user back as response
         res.status(201).send({ newUser, token })
     } catch (error) {
         // Exception in save() => send back a 400
         res.status(400).send(error)
+        console.log(error);
+        
     }
 })
 
@@ -110,11 +116,16 @@ router.delete('/users/me', auth, async (req, res) => {
         // Removing the user from database
         await req.user.remove()
 
+        // Sending the farewell mail
+        sendFarewellMail(req.user.email, req.user.name)
+
         // Sending the deleted user as response
         res.send(req.user)
     } catch (error) {
         // Exception in findByIdAndDelete() 
-        res.status(500).send()
+        res.status(500).send({error})
+        console.log(error);
+        
     }
 })
 
