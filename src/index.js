@@ -21,7 +21,7 @@ app.use(userRouter)
 app.use(taskRouter)
 
 // Gets the port from heroku server OR sets to 3000 for local environment
-const port = process.env.PORT || 3000
+const port = process.env.PORT
 
 // Starts the express server on 'port' number
 app.listen(port, () => {
