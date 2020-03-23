@@ -4,9 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "env-cmd --file ./config/test.env jest --watch --runInBand",
     "start": "node src/index.js",
     "dev": "env-cmd --file ./config/dev.env nodemon src/index.js"
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "env-cmd": "^10.1.0",
+    "jest": "^25.1.0",
     "nodemon": "^2.0.2"
   }
 }

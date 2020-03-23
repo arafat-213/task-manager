@@ -1,66 +1,26 @@
-// MongoClient for accessing the database 
-const { MongoClient } = require('mongodb')
+const express = require('express')
+const userRouter = require('./routers/user')
+const taskRouter = require('./routers/task')
 
-// Connection URL for the database, 'localhost' is malfunctioning hence IP of localhost
-const connectionURL = 'mongodb://127.0.0.1:27017'
+// Requiring mongoose.js to initiate connection only, hence not saving it in a const
+require('./db/mongoose')
 
-// Name of the database
-const databaseName = 'task-manager'
+// req.body returned undefined when body-parser was not used
+const bodyParser = require('body-parser');
 
-// Initiating a connection
-// Setting useNewUrlParser = true so that IP can be parsed without any issue
-MongoClient.connect(connectionURL, {useNewUrlParser: true}, (error, client) => {
-    if(error) {
-        return console.log('Unable to connect to the database');
-    }
-    
-    // Getting an instance of task-manager database
-    const database = client.db(databaseName)
+// Gets an instance of express
+const app = express()
 
-    // Creates/Reads the collection named 'users' and inserts the passed values as document(s)
-    // database.collection('users').insertMany([{
-    //     name: 'Tony',
-    //     Age: 46
-    // }, {
-    //     name: 'Steve',
-    //     Age: 91
-    // }], (error, result) => {
-    //     if(error) {
-    //         return console.log('Unable to add user to the database');
-    //     }
-    //     console.log(result.ops);
-    // })
+// Telling express server to use body-parser to be able to read req.body
+app.use(bodyParser.json())
 
-    // database.collection('kaaam').insertMany([
-    //     {
-    //         description: 'Shopping',
-    //         completed: true
-    //     },
-    //     {
-    //         description: 'Cleaning',
-    //         completed: false
-    //     },
-    //     {
-    //         description: 'Sleeping',
-    //         completed: false
-    //     }
-    // ], (error, result) => {
-    //     if(error) {
-    //         return  console.log('Unable to add kaams');
-    //     }
-    //     console.log(result.ops);
-        
-    // })
+// Telling express to use user router
+app.use(userRouter)
 
-    // Finds the first kaam which is not completed
-    // database.collection('kaaam').findOne({completed: false}, (error, kaaam)=> {
-        // if(!error)
-        //    console.log(kaaam);
-            
-    // })
+// Telling express to use task router
+app.use(taskRouter)
 
-    // Finds all the kaams that are not completed
-    // database.collection('kaaam').find({completed: false}).toArray((error, kaaam) => {
-    //     console.log(kaaam);
-    // })
-})
+// exporting app instance
+// index.js will boot up the server to run the app
+// Test cases only require app instance and works even if server is offline
+module.exports = app

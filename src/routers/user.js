@@ -13,7 +13,7 @@ const router = new express.Router()
 // Async function to user cleaner syntax
 router.post('/users', async (req, res) => {
     // User data is fetched from HTTP request body
-    const newUser = new User(req.body)
+    const user = new User(req.body)
     //Inserting the new user into database
     try {
         // Treats save() like a synchronous function
@@ -21,19 +21,19 @@ router.post('/users', async (req, res) => {
         // Hence next statement send() will be executed only when save() is completed
 
         // Generating an auth token for new user
-        const token = await newUser.generateAuthToken()
+        const token = await user.generateAuthToken()
 
         // Storing the token in to new user object
-        newUser.tokens = newUser.tokens.concat({ token })
+        user.tokens = user.tokens.concat({ token })
 
         // Storing the user data into database
-        await newUser.save()
+        await user.save()
 
         // Sending welcome email to new user
-        sendWelcomeEmail(newUser.email, newUser.name)
+        sendWelcomeEmail(user.email, user.name)
 
         // Setting the status 201 and sending the user back as response
-        res.status(201).send({ newUser, token })
+        res.status(201).send({ user, token })
     } catch (error) {
         // Exception in save() => send back a 400
         res.status(400).send(error)
@@ -140,8 +140,6 @@ router.post('/users/login', async (req, res) => {
         // Sending user as a response
         res.send({ user, token })
     } catch (error) {
-        console.log(error);
-
         res.status(400).send()
     }
 })

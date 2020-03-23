@@ -1,24 +1,5 @@
-const express = require('express')
-const userRouter = require('./routers/user')
-const taskRouter = require('./routers/task')
-
-// Requiring mongoose.js to initiate connection only, hence not saving it in a const
-require('./db/mongoose')
-
-// req.body returned undefined when body-parser was not used
-const bodyParser = require('body-parser');
-
-// Gets an instance of express
-const app = express()
-
-// Telling express server to use body-parser to be able to read req.body
-app.use(bodyParser.json())
-
-// Telling express to use user router
-app.use(userRouter)
-
-// Telling express to use task router
-app.use(taskRouter)
+// Requiring app instance to boot up server
+const app = require('./app')
 
 // Gets the port from heroku server OR sets to 3000 for local environment
 const port = process.env.PORT
